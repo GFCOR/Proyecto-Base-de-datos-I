@@ -1,84 +1,68 @@
--- Consulta 1: Eficiencia de los proveedores
--- Pregunta:
--- ¿Cuáles son los proveedores que abastecieron más productos en los últimos 6 meses y cuál fue su participación en las ventas de la distribuidora?
--- Justificación:
--- Identificar a los proveedores más eficientes permite evaluar si sus productos contribuyen significativamente a las ventas de la distribuidora, ayudando a tomar decisiones sobre futuras negociaciones.
-
+Pregunta: ¿Cuáles son los usuarios que han escrito más reseñas y cuántas horas han jugado en total? Justificación: Identificar a los usuarios más activos ayuda a entender el compromiso de los usuarios y puede ser utilizado para promociones dirigidas.
+-- Consulta para encontrar los usuarios con más reseñas y sus horas jugadas totales
 SELECT
-    pr.nombre AS proveedor,
-    COUNT(p.id_producto) AS productos_abastecidos,
-    SUM(dp.subtotal) AS total_ventas_proveedor,
-    ROUND((SUM(dp.subtotal) * 100.0) / (SELECT SUM(dp2.subtotal)
-        FROM DetallesPedido dp2
-        JOIN Pedidos p2 ON dp2.id_pedido = p2.id_pedido
-        WHERE p2.fecha >= CURRENT_DATE - INTERVAL '6 months'), 2) AS participacion_ventas
+    u.nombre AS usuario,
+    u.apodo,
+    COUNT(r.id_reseña) AS total_reseñas,
+    SUM(r.horas_jugadas) AS total_horas_jugadas
 FROM
-    Productos p
-    JOIN Proveedores pr ON p.id_proveedor = pr.id_proveedor
-    JOIN DetallesPedido dp ON p.id_producto = dp.id_producto
-    JOIN Pedidos ped ON dp.id_pedido = ped.id_pedido
-WHERE
-    ped.fecha >= CURRENT_DATE - INTERVAL '6 months'
+    Usuario u
+    JOIN Reseña r ON u.usuario_id = r.usuario_id
 GROUP BY
-    pr.id_proveedor
+    u.usuario_id
 ORDER BY
-    total_ventas_proveedor DESC;
+    total_reseñas DESC, total_horas_jugadas DESC;
 
--- Consulta 2: Rendimiento de los tipos de productos
--- Pregunta:
--- ¿Cuál es el rendimiento por tipo de producto (agua, gaseosa, cerveza) en los últimos dos años, en términos de ventas totales y promedio mensual?
--- Justificación:
--- La empresa necesita entender qué tipo de productos tienen un mejor desempeño en ventas para ajustar estrategias de inventario y distribución.
-
+Pregunta: ¿Cuáles son los juegos que tienen más mods creados para ellos? Justificación: Entender qué juegos tienen más mods puede ayudar a identificar juegos populares y áreas potenciales para expansión o soporte.
+-- Consulta para encontrar los juegos más populares por número de mods
 SELECT
-    tipo_producto,
-    SUM(dp.subtotal) AS ventas_totales,
-    ROUND(SUM(dp.subtotal) / (24.0), 2) AS promedio_mensual
-FROM (
-    SELECT
-        dp.subtotal,
-        CASE
-            WHEN a.id_producto IS NOT NULL THEN 'Agua'
-            WHEN g.id_producto IS NOT NULL THEN 'Gaseosa'
-            WHEN c.id_producto IS NOT NULL THEN 'Cerveza'
-            ELSE 'Otros'
-        END AS tipo_producto
-    FROM
-        DetallesPedido dp
-        JOIN Productos p ON dp.id_producto = p.id_producto
-        LEFT JOIN Agua a ON p.id_producto = a.id_producto
-        LEFT JOIN Cervezas c ON p.id_producto = c.id_producto
-        LEFT JOIN Gaseosas g ON p.id_producto = g.id_producto
-        JOIN Pedidos ped ON dp.id_pedido = ped.id_pedido
-    WHERE
-        ped.fecha >= CURRENT_DATE - INTERVAL '2 years'
-) AS ventas_por_tipo
-GROUP BY
-    tipo_producto
-ORDER BY
-    ventas_totales DESC;
-
--- Consulta 3: Tendencias de ventas estacionales
--- Pregunta:
--- ¿Cuáles son los productos más vendidos en las temporadas de verano e invierno de los últimos dos años?
--- Justificación:
--- Ayuda a identificar productos con mayor demanda en períodos específicos del año, facilitando la planificación de inventarios y campañas estacionales.
-
-SELECT
-    p.nombre AS producto,
-    p.marca,
-    CASE
-        WHEN EXTRACT(MONTH FROM ped.fecha) IN (12, 1, 2) THEN 'Verano'
-        WHEN EXTRACT(MONTH FROM ped.fecha) IN (6, 7, 8) THEN 'Invierno'
-    END AS temporada,
-    SUM(dp.cantidad_solicitada) AS cantidad_vendida
+    v.nombre AS videojuego,
+    COUNT(m.id_mod) AS total_mods
 FROM
-    DetallesPedido dp
-    JOIN Productos p ON dp.id_producto = p.id_producto
-    JOIN Pedidos ped ON dp.id_pedido = ped.id_pedido
-WHERE
-    ped.fecha >= CURRENT_DATE - INTERVAL '2 years'
+    Videojuego v
+    JOIN Mod m ON v.id_videojuego = m.id_videojuego
 GROUP BY
-    p.id_producto, temporada
+    v.id_videojuego
 ORDER BY
-    temporada, cantidad_vendida DESC;
+    total_mods DESC;
+
+
+Pregunta: ¿Cuál es el precio promedio de los juegos por género? Justificación: Esto ayuda a entender las tendencias de precios dentro de diferentes géneros y puede asistir en estrategias de precios.
+-- Consulta para encontrar el precio promedio de los juegos por género
+SELECT
+    genero,
+    AVG(precio) AS precio_promedio
+FROM
+    Videojuego
+GROUP BY
+    genero
+ORDER BY
+    precio_promedio DESC;
+
+Pregunta: ¿Cuántos usuarios están verificados basado en el número de reseñas que han escrito? Justificación: Esto ayuda a entender el impacto de la actividad del usuario en el estado de verificación.
+-- Consulta para encontrar el número de usuarios verificados basado en sus reseñas
+SELECT
+    verificado,
+    COUNT(usuario_id) AS total_usuarios
+FROM
+    Usuario
+GROUP BY
+    verificado
+ORDER BY
+    total_usuarios DESC;
+
+Pregunta: ¿Cuál es el monto total de transacciones entre usuarios? Justificación: Esto ayuda a entender el volumen de transacciones entre usuarios y puede ser utilizado para análisis financieros.
+-- Consulta para encontrar el monto total de transacciones entre usuarios
+SELECT
+    u1.nombre AS usuario_1,
+    u2.nombre AS usuario_2,
+    SUM(i.saldo_dado) AS total_saldo_dado,
+    SUM(i.saldo_recibir) AS total_saldo_recibir
+FROM
+    Intercambio i
+    JOIN Usuario u1 ON i.usuario_id_1 = u1.usuario_id
+    JOIN Usuario u2 ON i.usuario_id_2 = u2.usuario_id
+GROUP BY
+    u1.usuario_id, u2.usuario_id
+ORDER BY
+    total_saldo_dado DESC, total_saldo_recibir DESC;
